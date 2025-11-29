@@ -1,32 +1,1421 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="stylesheet" href="styles.css" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus App</title>
-        <script type="module" src="/main.js" defer></script>
-    </head>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据查询系统</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            margin: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+        
+        .controls {
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            flex-shrink: 0;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #4d90fe;
+            box-shadow: 0 0 0 2px rgba(77, 144, 254, 0.2);
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        
+        .btn-primary {
+            background-color: #4285f4;
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: #34a853;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #ea4335;
+            color: white;
+        }
+        
+        .btn-warning {
+            background-color: #fbbc05;
+            color: white;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .column-selector {
+            padding: 10px 15px;
+            background-color: #f1f3f4;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        
+        .column-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+        
+        .column-option input {
+            margin: 0;
+        }
+        
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 11px;
+            min-width: 100%;
+        }
+        
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        th {
+            background-color: #f1f3f4;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+            position: relative;
+            user-select: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 150px; /* 默认列宽 */
+        }
+        
+        th:hover {
+            background-color: #e8eaed;
+        }
+        
+        .resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #ccc;
+            cursor: col-resize;
+        }
+        
+        .resize-handle:hover {
+            background-color: #4285f4;
+        }
+        
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #dee2e6;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .status-bar {
+            padding: 8px 15px;
+            background-color: #e9ecef;
+            font-size: 12px;
+            color: #6c757d;
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 150px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4285f4;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .highlight {
+            background-color: #fff3cd;
+        }
+        
+        .virtual-scroll-placeholder {
+            height: 1px;
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: opacity 0.3s, transform 0.3s;
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .notification.success {
+            background-color: #34a853;
+        }
+        
+        .notification.error {
+            background-color: #ea4335;
+        }
+        
+        .notification.info {
+            background-color: #4285f4;
+        }
+        
+        .data-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .storage-info {
+            font-size: 11px;
+            color: #666;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .db-status {
+            font-size: 11px;
+            color: #666;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>数据查询系统</h1>
+            <div class="status-bar">
+                <div>数据量: <span id="dataCount">0</span> 行</div>
+                <div>当前显示: <span id="displayCount">0</span> 行</div>
+            </div>
+        </header>
+        
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="输入关键词进行查询...">
+            </div>
+            <div class="buttons">
+                <button id="importBtn" class="btn-primary">
+                    <i>📁</i> 导入Excel
+                </button>
+                <button id="exportBtn" class="btn-success">
+                    <i>📊</i> 导出Excel
+                </button>
+                <button id="clearBtn" class="btn-danger">
+                    <i>🗑️</i> 清除数据
+                </button>
+                <div class="data-actions">
+                    <button id="exportDBBtn" class="btn-warning">
+                        <i>💾</i> 导出数据库
+                    </button>
+                    <button id="importDBBtn" class="btn-primary">
+                        <i>📂</i> 导入数据库
+                    </button>
+                    <div class="storage-info" id="storageInfo">IndexedDB</div>
+                    <div class="db-status" id="dbStatus">未连接</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="column-selector" id="columnSelector">
+            <!-- 列选项将通过JavaScript动态生成 -->
+        </div>
+        
+        <div class="table-container" id="tableContainer">
+            <table id="dataTable">
+                <thead id="tableHeader">
+                    <!-- 表头将通过JavaScript动态生成 -->
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="20" class="no-data">暂无数据，请导入数据文件</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    <body>
-        <main class="container">
-            <h1>Welcome to PakePlus</h1>
-            <form class="row" id="greet-form">
-                <input id="inputValue" placeholder="Enter a something..." />
-            </form>
-            <div class="resultBox">
-                <span>result: </span>
-                <span id="result"></span>
+    <!-- 导出数据库模态框 -->
+    <div id="exportDBModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">导出数据库</div>
+                <button class="close-button" id="closeExportModal">&times;</button>
             </div>
-            <div class="invokeBox">
-                <button id="openUrl">open_url_browser</button>
-                <button id="openUrlNew">open_url_new</button>
-                <button id="runCommand">run_command</button>
-                <button id="downloadFile">download_file</button>
-                <button id="getExeDir">get_exe_dir</button>
-                <button id="getEnvVar">get_env_var</button>
-                <button id="findPort">find_port</button>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="exportFileName">文件名</label>
+                    <input type="text" id="exportFileName" value="数据查询系统备份" placeholder="输入文件名">
+                </div>
+                <div class="form-group">
+                    <label for="includeSettings">包含设置</label>
+                    <select id="includeSettings">
+                        <option value="yes">是</option>
+                        <option value="no">否</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>导出内容</label>
+                    <div>
+                        <input type="checkbox" id="exportTableData" checked>
+                        <label for="exportTableData">表格数据</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="exportColumnSettings" checked>
+                        <label for="exportColumnSettings">列设置</label>
+                    </div>
+                </div>
             </div>
-        </main>
-    </body>
+            <div class="modal-footer">
+                <button id="cancelExport" class="btn-danger">取消</button>
+                <button id="confirmExport" class="btn-success">导出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入数据库模态框 -->
+    <div id="importDBModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">导入数据库</div>
+                <button class="close-button" id="closeImportModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="importFile">选择备份文件</label>
+                    <input type="file" id="importFile" accept=".json">
+                </div>
+                <div class="form-group">
+                    <label for="importOptions">导入选项</label>
+                    <select id="importOptions">
+                        <option value="replace">替换当前数据</option>
+                        <option value="merge">合并数据</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>导入内容</label>
+                    <div>
+                        <input type="checkbox" id="importTableData" checked>
+                        <label for="importTableData">表格数据</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="importColumnSettings" checked>
+                        <label for="importColumnSettings">列设置</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelImport" class="btn-danger">取消</button>
+                <button id="confirmImport" class="btn-success">导入</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // 全局变量
+        let allData = [];
+        let filteredData = [];
+        let isResizing = false;
+        let currentResizeColumn = null;
+        let startX = 0;
+        let startWidth = 0;
+        let columnVisibility = {};
+        let columnWidths = {};
+        let rowHeight = 28; // 预估行高
+        let visibleRowCount = 0;
+        let scrollTop = 0;
+        let columnOrder = [
+            'index', 'org', 'assembly', 'assemblyDesc', 'materialIndex', 'process', 
+            'component', 'componentName', 'componentDesc', 'unit', 'unitUsage', 'yield', 
+            'supplyType', 'supplySubstore', 'referenceIndicator', 'referenceDesc', 
+            'alternativeCode', 'alternativeDesc', 'alternativeUsage', 'alternativePriority'
+        ];
+        
+        const columnTitles = {
+            'index': '序号',
+            'org': '组织',
+            'assembly': '装配件',
+            'assemblyDesc': '装配件描述',
+            'materialIndex': '物料序号',
+            'process': '工序',
+            'component': '组件',
+            'componentName': '组件名称',
+            'componentDesc': '组件描述',
+            'unit': '单位',
+            'unitUsage': '单位用量',
+            'yield': '产出率',
+            'supplyType': '供应类型',
+            'supplySubstore': '供应子库',
+            'referenceIndicator': '参考指示符',
+            'referenceDesc': '参考指示符说明',
+            'alternativeCode': '替代料编码',
+            'alternativeDesc': '替代料描述',
+            'alternativeUsage': '替代料用量',
+            'alternativePriority': '替代料优先级'
+        };
+
+        // IndexedDB相关变量
+        let db = null;
+        const DB_NAME = 'DataQuerySystemDB';
+        const DB_VERSION = 1;
+        const TABLE_DATA_STORE = 'tableData';
+        const SETTINGS_STORE = 'settings';
+
+        // DOM元素
+        const tableBody = document.getElementById('tableBody');
+        const tableHeader = document.getElementById('tableHeader');
+        const columnSelector = document.getElementById('columnSelector');
+        const searchInput = document.getElementById('searchInput');
+        const importBtn = document.getElementById('importBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportDBBtn = document.getElementById('exportDBBtn');
+        const importDBBtn = document.getElementById('importDBBtn');
+        const dataCount = document.getElementById('dataCount');
+        const displayCount = document.getElementById('displayCount');
+        const tableContainer = document.getElementById('tableContainer');
+        const notification = document.getElementById('notification');
+        const storageInfo = document.getElementById('storageInfo');
+        const dbStatus = document.getElementById('dbStatus');
+        
+        // 模态框元素
+        const exportDBModal = document.getElementById('exportDBModal');
+        const importDBModal = document.getElementById('importDBModal');
+        const closeExportModal = document.getElementById('closeExportModal');
+        const closeImportModal = document.getElementById('closeImportModal');
+        const cancelExport = document.getElementById('cancelExport');
+        const cancelImport = document.getElementById('cancelImport');
+        const confirmExport = document.getElementById('confirmExport');
+        const confirmImport = document.getElementById('confirmImport');
+        const exportFileName = document.getElementById('exportFileName');
+        const includeSettings = document.getElementById('includeSettings');
+        const exportTableData = document.getElementById('exportTableData');
+        const exportColumnSettings = document.getElementById('exportColumnSettings');
+        const importFile = document.getElementById('importFile');
+        const importOptions = document.getElementById('importOptions');
+        const importTableData = document.getElementById('importTableData');
+        const importColumnSettings = document.getElementById('importColumnSettings');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 初始化列可见性和列宽
+            columnOrder.forEach(col => {
+                columnVisibility[col] = true;
+                columnWidths[col] = 150; // 默认列宽
+            });
+            
+            // 初始化IndexedDB
+            await initDB();
+            
+            // 尝试从IndexedDB加载数据
+            await loadDataFromDB();
+            
+            // 绑定事件
+            searchInput.addEventListener('input', handleSearch);
+            importBtn.addEventListener('click', handleImport);
+            exportBtn.addEventListener('click', handleExport);
+            clearBtn.addEventListener('click', handleClear);
+            exportDBBtn.addEventListener('click', showExportModal);
+            importDBBtn.addEventListener('click', showImportModal);
+            tableContainer.addEventListener('scroll', handleScroll);
+            
+            // 模态框事件
+            closeExportModal.addEventListener('click', hideExportModal);
+            closeImportModal.addEventListener('click', hideImportModal);
+            cancelExport.addEventListener('click', hideExportModal);
+            cancelImport.addEventListener('click', hideImportModal);
+            confirmExport.addEventListener('click', handleExportDB);
+            confirmImport.addEventListener('click', handleImportDB);
+            
+            // 初始化列宽调整
+            initColumnResize();
+            
+            // 生成列选择器
+            generateColumnSelector();
+            
+            // 初始渲染表头
+            renderTableHeader();
+            
+            // 计算可见行数
+            calculateVisibleRows();
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', calculateVisibleRows);
+        });
+
+        // 初始化IndexedDB
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = function(event) {
+                    console.error('打开数据库失败:', event.target.error);
+                    dbStatus.textContent = '连接失败';
+                    showNotification('数据库连接失败', 'error');
+                    reject(event.target.error);
+                };
+                
+                request.onsuccess = function(event) {
+                    db = event.target.result;
+                    console.log('数据库连接成功');
+                    dbStatus.textContent = '已连接';
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = function(event) {
+                    console.log('数据库升级/初始化');
+                    db = event.target.result;
+                    
+                    // 创建表数据存储
+                    if (!db.objectStoreNames.contains(TABLE_DATA_STORE)) {
+                        const tableDataStore = db.createObjectStore(TABLE_DATA_STORE, { keyPath: 'id', autoIncrement: true });
+                        tableDataStore.createIndex('data', 'data', { unique: false });
+                    }
+                    
+                    // 创建设置存储
+                    if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
+                        const settingsStore = db.createObjectStore(SETTINGS_STORE, { keyPath: 'name' });
+                    }
+                };
+            });
+        }
+
+        // 从IndexedDB加载数据
+        async function loadDataFromDB() {
+            if (!db) {
+                console.error('数据库未初始化');
+                return;
+            }
+            
+            try {
+                // 加载表数据
+                const tableData = await getDataFromStore(TABLE_DATA_STORE, 'all');
+                if (tableData && tableData.length > 0) {
+                    allData = tableData[0].data || [];
+                    filteredData = [...allData];
+                    updateDataCount();
+                    renderTableBody();
+                    showNotification('数据已从数据库加载', 'success');
+                    console.log('数据已从数据库加载');
+                } else {
+                    generateSampleData();
+                }
+                
+                // 加载列宽设置
+                const columnWidthsData = await getDataFromStore(SETTINGS_STORE, 'columnWidths');
+                if (columnWidthsData) {
+                    Object.assign(columnWidths, columnWidthsData.value);
+                }
+                
+                // 加载列可见性设置
+                const columnVisibilityData = await getDataFromStore(SETTINGS_STORE, 'columnVisibility');
+                if (columnVisibilityData) {
+                    Object.assign(columnVisibility, columnVisibilityData.value);
+                    generateColumnSelector();
+                }
+            } catch (error) {
+                console.error('从数据库加载数据失败:', error);
+                generateSampleData();
+            }
+        }
+
+        // 从存储中获取数据
+        function getDataFromStore(storeName, key) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject(new Error('数据库未初始化'));
+                    return;
+                }
+                
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                
+                let request;
+                if (key === 'all') {
+                    request = store.getAll();
+                } else {
+                    request = store.get(key);
+                }
+                
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+                
+                request.onerror = function() {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // 保存数据到IndexedDB
+        async function saveDataToDB() {
+            if (!db) {
+                console.error('数据库未初始化');
+                return false;
+            }
+            
+            try {
+                // 保存表数据
+                await saveDataToStore(TABLE_DATA_STORE, { id: 1, data: allData });
+                
+                // 保存列宽设置
+                await saveDataToStore(SETTINGS_STORE, { name: 'columnWidths', value: columnWidths });
+                
+                // 保存列可见性设置
+                await saveDataToStore(SETTINGS_STORE, { name: 'columnVisibility', value: columnVisibility });
+                
+                showNotification('数据已保存到数据库', 'success');
+                console.log('数据已保存到数据库');
+                return true;
+            } catch (error) {
+                console.error('保存数据到数据库失败:', error);
+                showNotification('保存数据失败', 'error');
+                return false;
+            }
+        }
+
+        // 保存数据到存储
+        function saveDataToStore(storeName, data) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject(new Error('数据库未初始化'));
+                    return;
+                }
+                
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                
+                const request = store.put(data);
+                
+                request.onsuccess = function() {
+                    resolve(request.result);
+                };
+                
+                request.onerror = function() {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // 清除数据库中的数据
+        async function clearDB() {
+            if (!db) {
+                console.error('数据库未初始化');
+                return false;
+            }
+            
+            try {
+                // 清空表数据
+                await clearStore(TABLE_DATA_STORE);
+                
+                // 清空设置
+                await clearStore(SETTINGS_STORE);
+                
+                showNotification('数据库已清空', 'success');
+                console.log('数据库已清空');
+                return true;
+            } catch (error) {
+                console.error('清空数据库失败:', error);
+                showNotification('清空数据库失败', 'error');
+                return false;
+            }
+        }
+
+        // 清空存储
+        function clearStore(storeName) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject(new Error('数据库未初始化'));
+                    return;
+                }
+                
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                
+                const request = store.clear();
+                
+                request.onsuccess = function() {
+                    resolve();
+                };
+                
+                request.onerror = function() {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // 显示导出数据库模态框
+        function showExportModal() {
+            exportDBModal.style.display = 'flex';
+        }
+
+        // 隐藏导出数据库模态框
+        function hideExportModal() {
+            exportDBModal.style.display = 'none';
+        }
+
+        // 显示导入数据库模态框
+        function showImportModal() {
+            importDBModal.style.display = 'flex';
+        }
+
+        // 隐藏导入数据库模态框
+        function hideImportModal() {
+            importDBModal.style.display = 'none';
+        }
+
+        // 处理导出数据库
+        async function handleExportDB() {
+            try {
+                const fileName = exportFileName.value || '数据查询系统备份';
+                const includeTableData = exportTableData.checked;
+                const includeColumnSettings = exportColumnSettings.checked;
+                
+                // 准备导出的数据
+                const exportData = {
+                    version: '1.0',
+                    exportDate: new Date().toISOString(),
+                    tableData: includeTableData ? allData : null,
+                    columnSettings: includeColumnSettings ? {
+                        columnWidths,
+                        columnVisibility
+                    } : null
+                };
+                
+                // 创建JSON文件
+                const jsonData = JSON.stringify(exportData, null, 2);
+                const blob = new Blob([jsonData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                // 创建下载链接
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fileName}.json`;
+                document.body.appendChild(a);
+                a.click();
+                
+                // 清理
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 0);
+                
+                hideExportModal();
+                showNotification('数据库已成功导出', 'success');
+            } catch (error) {
+                console.error('导出数据库失败:', error);
+                showNotification('导出数据库失败', 'error');
+            }
+        }
+
+        // 处理导入数据库
+        async function handleImportDB() {
+            try {
+                const file = importFile.files[0];
+                if (!file) {
+                    showNotification('请选择要导入的文件', 'error');
+                    return;
+                }
+                
+                const importOption = importOptions.value;
+                const importTableDataFlag = importTableData.checked;
+                const importColumnSettingsFlag = importColumnSettings.checked;
+                
+                // 读取文件
+                const reader = new FileReader();
+                
+                reader.onload = async function(e) {
+                    try {
+                        const jsonData = e.target.result;
+                        const importData = JSON.parse(jsonData);
+                        
+                        // 验证数据格式
+                        if (!importData.version) {
+                            throw new Error('无效的备份文件格式');
+                        }
+                        
+                        // 导入表格数据
+                        if (importTableDataFlag && importData.tableData) {
+                            if (importOption === 'replace') {
+                                allData = importData.tableData;
+                            } else if (importOption === 'merge') {
+                                // 合并数据，避免重复
+                                const existingIds = new Set(allData.map(item => item.id));
+                                const newData = importData.tableData.filter(item => !existingIds.has(item.id));
+                                allData = [...allData, ...newData];
+                            }
+                            filteredData = [...allData];
+                            updateDataCount();
+                            renderTableBody();
+                        }
+                        
+                        // 导入列设置
+                        if (importColumnSettingsFlag && importData.columnSettings) {
+                            if (importData.columnSettings.columnWidths) {
+                                Object.assign(columnWidths, importData.columnSettings.columnWidths);
+                            }
+                            if (importData.columnSettings.columnVisibility) {
+                                Object.assign(columnVisibility, importData.columnSettings.columnVisibility);
+                                generateColumnSelector();
+                            }
+                            renderTableHeader();
+                        }
+                        
+                        // 保存到IndexedDB
+                        await saveDataToDB();
+                        
+                        hideImportModal();
+                        showNotification('数据库已成功导入', 'success');
+                    } catch (error) {
+                        console.error('导入数据库失败:', error);
+                        showNotification('导入数据库失败: ' + error.message, 'error');
+                    }
+                };
+                
+                reader.readAsText(file);
+            } catch (error) {
+                console.error('导入数据库失败:', error);
+                showNotification('导入数据库失败', 'error');
+            }
+        }
+
+        // 生成列选择器
+        function generateColumnSelector() {
+            columnSelector.innerHTML = '';
+            columnOrder.forEach(col => {
+                const option = document.createElement('div');
+                option.className = 'column-option';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `col-${col}`;
+                checkbox.checked = columnVisibility[col];
+                checkbox.addEventListener('change', function() {
+                    columnVisibility[col] = this.checked;
+                    renderTableHeader();
+                    renderTableBody();
+                    saveDataToDB();
+                });
+                
+                const label = document.createElement('label');
+                label.htmlFor = `col-${col}`;
+                label.textContent = columnTitles[col];
+                
+                option.appendChild(checkbox);
+                option.appendChild(label);
+                columnSelector.appendChild(option);
+            });
+        }
+
+        // 生成示例数据
+        function generateSampleData() {
+            // 创建示例数据
+            const organizations = ['组织A', '组织B', '组织C'];
+            const assemblies = ['装配件A', '装配件B', '装配件C'];
+            const components = ['组件A', '组件B', '组件C', '组件D'];
+            const units = ['个', '千克', '米', '套'];
+            const supplyTypes = ['内部供应', '外部采购'];
+            
+            // 生成100行示例数据（实际使用中应该从文件导入）
+            const sampleData = [];
+            for (let i = 1; i <= 100; i++) {
+                sampleData.push({
+                    id: i,
+                    index: i,
+                    org: organizations[Math.floor(Math.random() * organizations.length)],
+                    assembly: assemblies[Math.floor(Math.random() * assemblies.length)],
+                    assemblyDesc: `装配件${i}描述`,
+                    materialIndex: `MAT${i.toString().padStart(6, '0')}`,
+                    process: `工序${(i % 5) + 1}`,
+                    component: components[Math.floor(Math.random() * components.length)],
+                    componentName: `组件${i}名称`,
+                    componentDesc: `组件${i}描述`,
+                    unit: units[Math.floor(Math.random() * units.length)],
+                    unitUsage: (Math.random() * 10).toFixed(2),
+                    yield: (Math.random() * 100).toFixed(2) + '%',
+                    supplyType: supplyTypes[Math.floor(Math.random() * supplyTypes.length)],
+                    supplySubstore: `子库${(i % 3) + 1}`,
+                    referenceIndicator: `REF${i}`,
+                    referenceDesc: `参考指示符${i}说明`,
+                    alternativeCode: `ALT${i}`,
+                    alternativeDesc: `替代料${i}描述`,
+                    alternativeUsage: (Math.random() * 5).toFixed(2),
+                    alternativePriority: (i % 5) + 1
+                });
+            }
+            
+            allData = sampleData;
+            filteredData = [...allData];
+            updateDataCount();
+            renderTableBody();
+        }
+
+        // 处理搜索
+        function handleSearch() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                filteredData = [...allData];
+            } else {
+                filteredData = allData.filter(row => {
+                    return Object.values(row).some(value => 
+                        String(value).toLowerCase().includes(searchTerm)
+                    );
+                });
+            }
+            
+            renderTableBody();
+        }
+
+        // 渲染表头
+        function renderTableHeader() {
+            // 清空表头
+            tableHeader.innerHTML = '';
+            
+            // 创建表头行
+            const tr = document.createElement('tr');
+            
+            // 添加可见的列
+            columnOrder.forEach(col => {
+                if (columnVisibility[col]) {
+                    const th = document.createElement('th');
+                    th.textContent = columnTitles[col];
+                    th.setAttribute('data-field', col);
+                    th.style.width = columnWidths[col] + 'px';
+                    
+                    const resizeHandle = document.createElement('div');
+                    resizeHandle.className = 'resize-handle';
+                    
+                    th.appendChild(resizeHandle);
+                    tr.appendChild(th);
+                }
+            });
+            
+            tableHeader.appendChild(tr);
+            
+            // 重新初始化列宽调整
+            initColumnResize();
+        }
+
+        // 渲染表格主体
+        function renderTableBody() {
+            if (filteredData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="20" class="no-data">没有找到匹配的数据</td></tr>';
+                updateDisplayCount();
+                return;
+            }
+            
+            // 计算可见区域的数据
+            const startIndex = Math.floor(scrollTop / rowHeight);
+            const endIndex = Math.min(startIndex + visibleRowCount + 5, filteredData.length);
+            
+            // 清空表格主体
+            tableBody.innerHTML = '';
+            
+            // 添加上方占位符
+            const topPlaceholder = document.createElement('tr');
+            topPlaceholder.innerHTML = `<td colspan="${Object.values(columnVisibility).filter(v => v).length}">
+                <div class="virtual-scroll-placeholder" style="height: ${startIndex * rowHeight}px"></div>
+            </td>`;
+            tableBody.appendChild(topPlaceholder);
+            
+            // 渲染可见区域的数据行
+            for (let i = startIndex; i < endIndex; i++) {
+                const row = filteredData[i];
+                const tr = document.createElement('tr');
+                
+                // 为每个可见字段创建单元格
+                columnOrder.forEach(col => {
+                    if (columnVisibility[col]) {
+                        const td = document.createElement('td');
+                        td.textContent = row[col];
+                        td.title = row[col]; // 添加title以便鼠标悬停时显示完整内容
+                        tr.appendChild(td);
+                    }
+                });
+                
+                tableBody.appendChild(tr);
+            }
+            
+            // 添加下方占位符
+            const bottomPlaceholder = document.createElement('tr');
+            bottomPlaceholder.innerHTML = `<td colspan="${Object.values(columnVisibility).filter(v => v).length}">
+                <div class="virtual-scroll-placeholder" style="height: ${(filteredData.length - endIndex) * rowHeight}px"></div>
+            </td>`;
+            tableBody.appendChild(bottomPlaceholder);
+            
+            updateDisplayCount();
+        }
+
+        // 处理滚动
+        function handleScroll() {
+            scrollTop = tableContainer.scrollTop;
+            renderTableBody();
+        }
+
+        // 计算可见行数
+        function calculateVisibleRows() {
+            const containerHeight = tableContainer.clientHeight;
+            const headerHeight = tableHeader.offsetHeight;
+            visibleRowCount = Math.ceil((containerHeight - headerHeight) / rowHeight);
+            renderTableBody();
+        }
+
+        // 更新数据计数
+        function updateDataCount() {
+            dataCount.textContent = allData.length.toLocaleString();
+        }
+
+        // 更新显示计数
+        function updateDisplayCount() {
+            displayCount.textContent = filteredData.length.toLocaleString();
+        }
+
+        // 初始化列宽调整
+        function initColumnResize() {
+            const headers = document.querySelectorAll('th');
+            
+            headers.forEach(header => {
+                const resizeHandle = header.querySelector('.resize-handle');
+                
+                resizeHandle.addEventListener('mousedown', function(e) {
+                    isResizing = true;
+                    currentResizeColumn = header;
+                    startX = e.pageX;
+                    startWidth = header.offsetWidth;
+                    
+                    document.addEventListener('mousemove', handleResize);
+                    document.addEventListener('mouseup', stopResize);
+                    
+                    e.preventDefault();
+                });
+            });
+        }
+
+        // 处理列宽调整
+        function handleResize(e) {
+            if (!isResizing) return;
+            
+            const width = startWidth + (e.pageX - startX);
+            if (width > 30) { // 最小宽度限制
+                currentResizeColumn.style.width = width + 'px';
+                
+                // 更新列宽设置
+                const field = currentResizeColumn.getAttribute('data-field');
+                columnWidths[field] = width;
+                
+                // 更新表格布局
+                const table = document.getElementById('dataTable');
+                table.style.tableLayout = 'fixed';
+            }
+        }
+
+        // 停止列宽调整
+        function stopResize() {
+            isResizing = false;
+            currentResizeColumn = null;
+            document.removeEventListener('mousemove', handleResize);
+            document.removeEventListener('mouseup', stopResize);
+            
+            // 保存列宽设置到数据库
+            saveDataToDB();
+        }
+
+        // 处理导入Excel
+        function handleImport() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.xlsx, .xls';
+            
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // 显示加载状态
+                tableBody.innerHTML = '<tr><td colspan="20" class="loading"><div class="spinner"></div>正在导入数据，请稍候...</td></tr>';
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // 获取第一个工作表
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        
+                        // 将工作表转换为JSON
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        // 处理数据（假设第一行是标题）
+                        if (jsonData.length > 1) {
+                            const headers = jsonData[0];
+                            allData = [];
+                            
+                            for (let i = 1; i < jsonData.length; i++) {
+                                const row = jsonData[i];
+                                if (row.length === 0) continue;
+                                
+                                const rowData = {};
+                                headers.forEach((header, index) => {
+                                    // 将中文标题映射到字段名
+                                    const fieldMap = {
+                                        '序号': 'index',
+                                        '组织': 'org',
+                                        '装配件': 'assembly',
+                                        '装配件描述': 'assemblyDesc',
+                                        '物料序号': 'materialIndex',
+                                        '工序': 'process',
+                                        '组件': 'component',
+                                        '组件名称': 'componentName',
+                                        '组件描述': 'componentDesc',
+                                        '单位': 'unit',
+                                        '单位用量': 'unitUsage',
+                                        '产出率': 'yield',
+                                        '供应类型': 'supplyType',
+                                        '供应子库': 'supplySubstore',
+                                        '参考指示符': 'referenceIndicator',
+                                        '参考指示符说明': 'referenceDesc',
+                                        '替代料编码': 'alternativeCode',
+                                        '替代料描述': 'alternativeDesc',
+                                        '替代料用量': 'alternativeUsage',
+                                        '替代料优先级': 'alternativePriority'
+                                    };
+                                    
+                                    const fieldName = fieldMap[header] || header;
+                                    rowData[fieldName] = row[index] || '';
+                                });
+                                
+                                // 添加唯一ID
+                                rowData.id = i;
+                                
+                                allData.push(rowData);
+                            }
+                            
+                            filteredData = [...allData];
+                            updateDataCount();
+                            renderTableBody();
+                            
+                            // 保存到数据库
+                            if (saveDataToDB()) {
+                                showNotification(`成功导入 ${allData.length} 条数据`, 'success');
+                            } else {
+                                showNotification(`成功导入 ${allData.length} 条数据，但保存失败`, 'error');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('导入失败:', error);
+                        showNotification('导入失败，请检查文件格式', 'error');
+                    }
+                };
+                
+                reader.readAsArrayBuffer(file);
+            });
+            
+            fileInput.click();
+        }
+
+        // 处理导出Excel
+        function handleExport() {
+            if (allData.length === 0) {
+                showNotification('没有数据可导出', 'error');
+                return;
+            }
+            
+            try {
+                // 创建工作簿
+                const workbook = XLSX.utils.book_new();
+                
+                // 准备数据
+                const headers = [
+                    '序号', '组织', '装配件', '装配件描述', '物料序号', '工序', 
+                    '组件', '组件名称', '组件描述', '单位', '单位用量', '产出率', 
+                    '供应类型', '供应子库', '参考指示符', '参考指示符说明', 
+                    '替代料编码', '替代料描述', '替代料用量', '替代料优先级'
+                ];
+                
+                const data = [headers];
+                
+                allData.forEach(row => {
+                    const rowData = [
+                        row.index,
+                        row.org,
+                        row.assembly,
+                        row.assemblyDesc,
+                        row.materialIndex,
+                        row.process,
+                        row.component,
+                        row.componentName,
+                        row.componentDesc,
+                        row.unit,
+                        row.unitUsage,
+                        row.yield,
+                        row.supplyType,
+                        row.supplySubstore,
+                        row.referenceIndicator,
+                        row.referenceDesc,
+                        row.alternativeCode,
+                        row.alternativeDesc,
+                        row.alternativeUsage,
+                        row.alternativePriority
+                    ];
+                    
+                    data.push(rowData);
+                });
+                
+                // 创建工作表
+                const worksheet = XLSX.utils.aoa_to_sheet(data);
+                
+                // 将工作表添加到工作簿
+                XLSX.utils.book_append_sheet(workbook, worksheet, '数据');
+                
+                // 导出文件
+                XLSX.writeFile(workbook, '数据导出.xlsx');
+                
+                showNotification(`成功导出 ${allData.length} 条数据`, 'success');
+            } catch (error) {
+                console.error('导出失败:', error);
+                showNotification('导出失败', 'error');
+            }
+        }
+
+        // 处理清除数据
+        async function handleClear() {
+            if (confirm('确定要清除所有数据吗？此操作不可恢复。')) {
+                allData = [];
+                filteredData = [];
+                searchInput.value = '';
+                updateDataCount();
+                renderTableBody();
+                
+                // 从数据库清除数据
+                await clearDB();
+            }
+        }
+
+        // 显示通知
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
 </html>
